@@ -6,7 +6,6 @@
   <title>Crowdsourced Repair Map</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet-geosearch@3.0.0/dist/geosearch.css" />
   <style>
     /* Your previous CSS */
   </style>
@@ -16,7 +15,7 @@
     <h1>Crowdsourced Repair Map</h1>
     <p>This map collects data on informal repair practices and infrastructure in need of care in NYC.<br>
       Click anywhere on the map to share a marker. Add a title, description, optional image, and select the layer it belongs to.<br>
-      Use the toggle to view either where repair happens or where it's needed. Use the search bar to find specific locations.
+      Use the toggle to view either where repair happens or where it's needed.
     </p>
   </header>
 
@@ -24,7 +23,6 @@
 
   <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
-  <script src="https://unpkg.com/leaflet-geosearch@3.0.0/dist/bundle.min.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
   <script>
@@ -51,20 +49,99 @@
       maxZoom: 19
     }).addTo(map);
 
-    // Initialize GeoSearch provider and control
-    const provider = new GeoSearch.OpenStreetMapProvider();
-    const searchControl = new GeoSearch.GeoSearchControl({
-      provider: provider,
-      style: 'bar',
-      showMarker: true,
-      retainZoomLevel: false,
-      autoClose: true,
-      searchLabel: 'Search for a place'
+    // Remove GeoSearch and search bar code
+    // You can directly proceed with adding markers and layers without the search bar
+
+    const repairLayer = L.layerGroup().addTo(map);
+    const needsRepairLayer = L.layerGroup().addTo(map);
+
+    const layers = {
+      "🛠 Where People Go for Repairs": repairLayer,
+      "🚧 Infrastructure Needing Repair": needsRepairLayer
+    };
+
+    L.control.layers(null, layers, { position: 'topright', collapsed: false }).addTo(map);
+
+    const customIcon = new L.DivIcon({
+      className: 'custom-icon',
+      iconSize: [20, 20]
     });
-    map.addControl(searchControl);
 
-    // Layers and marker handling code remains unchanged...
+    let tempLatLng = null;
 
+    map.on('click', function(e) {
+      tempLatLng = e.latlng;
+      const popupContent = `
+        <div class="custom-popup">
+          <label>Title:<br><input type="text" id="title"></label><br>
+          <label>Description:<br><textarea id="desc"></textarea></label><br>
+          <label>Image URL:<br><input type="text" id="img"></label><br>
+          <label>
+            Layer:<br>
+            <select id="layer">
+              <option value="repair">Where People Go for Repairs</option>
+              <option value="needs">Infrastructure Needing Repair</option>
+            </select>
+          </label><br>
+          <button onclick="saveMarker()">Save</button>
+        </div>
+      `;
+      L.popup()
+        .setLatLng(e.latlng)
+        .setContent(popupContent)
+        .openOn(map);
+    });
+
+    function saveMarker() {
+      const title = document.getElementById('title').value;
+      const desc = document.getElementById('desc').value;
+      const img = document.getElementById('img').value;
+      const layerType = document.getElementById('layer').value;
+
+      const data = {
+        lat: tempLatLng.lat,
+        lng: tempLatLng.lng,
+        title,
+        desc,
+        img,
+        type: layerType
+      };
+
+      db.collection("markers").add(data).then(() => {
+        addMarkerToMap(data);
+        map.closePopup();
+      });
+    }
+
+    function addMarkerToMap(data) {
+      const content = `<strong>${data.title}</strong><br>${data.desc}<br>${data.img ? '<img src="' + data.img + '" width="200">' : ''}`;
+      const marker = L.marker([data.lat, data.lng], { icon: customIcon }).bindPopup(content);
+      if (data.type === 'repair') {
+        repairLayer.addLayer(marker);
+      } else {
+        needsRepairLayer.addLayer(marker);
+      }
+    }
+
+    db.collection("markers").get().then(querySnapshot => {
+      querySnapshot.forEach(doc => {
+        addMarkerToMap(doc.data());
+      });
+    });
+
+    map.whenReady(() => {
+      fetch('boroughs.geojson')
+        .then(res => res.json())
+        .then(data => {
+          L.geoJSON(data, {
+            style: {
+              color: '#6fa76b',
+              weight: 2,
+              fillOpacity: 0.07
+            }
+          }).addTo(map);
+        }).catch(err => console.error("GeoJSON load error:", err));
+    });
   </script>
 </body>
 </html>
