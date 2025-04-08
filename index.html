@@ -6,38 +6,75 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
   <style>
-    body { margin: 0; font-family: sans-serif; }
+    body {
+      margin: 0;
+      font-family: 'Georgia', serif;
+      background-color: #edf4ee;
+      color: #2e4438;
+    }
     header {
-      background: #e0f2e9;
-      padding: 1rem;
+      background: #d9e8dc;
+      padding: 2rem;
       text-align: center;
-      border-bottom: 1px solid #b0d3c2;
+      border-bottom: 1px solid #bdd1c4;
     }
     header h1 {
       margin: 0;
-      font-size: 1.8rem;
-      color: #2e7d32;
+      font-size: 2.5rem;
+      color: #325f46;
+      font-weight: 400;
     }
     header p {
-      margin: 0.5rem 0 0;
-      color: #4e6653;
+      margin: 1.2rem auto 0;
+      color: #4a6452;
+      max-width: 720px;
+      line-height: 1.6;
+      font-size: 1.05rem;
     }
-    #map { height: calc(100vh - 120px); }
-    .custom-popup input, .custom-popup textarea {
+    #map {
+      height: calc(100vh - 200px);
+      filter: saturate(0.8) brightness(1.02);
+    }
+    .custom-popup input,
+    .custom-popup textarea,
+    .custom-popup select {
       width: 100%;
+      padding: 6px;
       margin-top: 5px;
+      font-family: 'Georgia', serif;
+      border: 1px solid #aac8b0;
+      border-radius: 4px;
+      background-color: #f5faf6;
+    }
+    .custom-popup button {
+      margin-top: 10px;
+      background-color: #92bc9c;
+      color: white;
+      padding: 6px 12px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: 'Georgia', serif;
     }
     .leaflet-popup-content-wrapper {
       max-width: 300px;
+      font-family: 'Georgia', serif;
+      background-color: #f6fdf8;
+      border: 1px solid #cde6d0;
     }
     .leaflet-control-layers-expanded {
       background-color: #f0fff4;
       border: 1px solid #b2dfdb;
-      padding: 0.5rem;
-      font-size: 0.9rem;
+      padding: 1rem;
+      font-size: 1rem;
+      font-family: 'Georgia', serif;
+      border-radius: 10px;
+      box-shadow: 2px 2px 6px rgba(0,0,0,0.07);
     }
     .leaflet-control-layers-selector + span {
       font-weight: bold;
+      margin-left: 6px;
+      font-size: 1.05rem;
     }
   </style>
 </head>
@@ -45,8 +82,9 @@
   <header>
     <h1>Crowdsourced Repair Map</h1>
     <p>
-      This map collects data on urban repair practices and infrastructure in need of care.<br>
-      Click anywhere on the map to add a marker. You can add a title, description, image, and select the correct category.
+      This poetic map collects data on informal repair practices and infrastructure in need of care in NYC.<br>
+      Click anywhere on the map to share a marker. Add a title, description, optional image, and select the layer it belongs to.<br>
+      Use the toggle to view either where repair happens or where it's needed.
     </p>
   </header>
 
@@ -54,9 +92,8 @@
 
   <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
   <script>
-    const map = L.map('map').setView([40.7128, -74.0060], 11); // NYC center
+    const map = L.map('map').setView([40.7128, -74.0060], 11);
 
-    // Custom minimal pale green-style base map from Carto
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
       attribution: '&copy; OpenStreetMap contributors & CartoDB',
       maxZoom: 19
@@ -66,13 +103,16 @@
     const needsRepairLayer = L.layerGroup().addTo(map);
 
     const layers = {
-      "Where People Go for Repairs": repairLayer,
-      "Infrastructure Needing Repair": needsRepairLayer
+      "🛠 Where People Go for Repairs": repairLayer,
+      "🚧 Infrastructure Needing Repair": needsRepairLayer
     };
 
     L.control.layers(null, layers, { position: 'topright', collapsed: false }).addTo(map);
 
+    let tempLatLng = null;
+
     map.on('click', function(e) {
+      tempLatLng = e.latlng;
       const popupContent = `
         <div class="custom-popup">
           <label>Title:<br><input type="text" id="title"></label><br>
@@ -85,7 +125,7 @@
               <option value="needs">Infrastructure Needing Repair</option>
             </select>
           </label><br>
-          <button onclick="saveMarker(${e.latlng.lat}, ${e.latlng.lng})">Save</button>
+          <button onclick="saveMarker()">Save</button>
         </div>
       `;
       L.popup()
@@ -94,7 +134,7 @@
         .openOn(map);
     });
 
-    function saveMarker(lat, lng) {
+    function saveMarker() {
       const title = document.getElementById('title').value;
       const desc = document.getElementById('desc').value;
       const img = document.getElementById('img').value;
@@ -102,7 +142,7 @@
 
       const fullDesc = `<strong>${title}</strong><br>${desc}<br>${img ? '<img src="' + img + '" width="200">' : ''}`;
 
-      const marker = L.marker([lat, lng]).bindPopup(fullDesc);
+      const marker = L.marker([tempLatLng.lat, tempLatLng.lng]).bindPopup(fullDesc);
 
       if (layerType === 'repair') {
         repairLayer.addLayer(marker);
@@ -114,7 +154,6 @@
       saveToLocalStorage();
     }
 
-    // Save markers to LocalStorage
     function saveToLocalStorage() {
       const allMarkers = [];
       repairLayer.eachLayer(layer => {
@@ -126,7 +165,6 @@
       localStorage.setItem('repairMapMarkers', JSON.stringify(allMarkers));
     }
 
-    // Load markers from LocalStorage
     function loadFromLocalStorage() {
       const saved = localStorage.getItem('repairMapMarkers');
       if (saved) {
@@ -141,18 +179,16 @@
       }
     }
 
-    // Call on map load
     loadFromLocalStorage();
 
-    // Load NYC borough boundaries from a GeoJSON file
     fetch('boroughs.geojson')
       .then(res => res.json())
       .then(data => {
         L.geoJSON(data, {
           style: {
-            color: '#4caf50',
+            color: '#6fa76b',
             weight: 2,
-            fillOpacity: 0.05
+            fillOpacity: 0.07
           }
         }).addTo(map);
       });
