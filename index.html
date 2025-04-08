@@ -111,7 +111,38 @@
       }
 
       map.closePopup();
+      saveToLocalStorage();
     }
+
+    // Save markers to LocalStorage
+    function saveToLocalStorage() {
+      const allMarkers = [];
+      repairLayer.eachLayer(layer => {
+        allMarkers.push({ latlng: layer.getLatLng(), popup: layer.getPopup().getContent(), type: 'repair' });
+      });
+      needsRepairLayer.eachLayer(layer => {
+        allMarkers.push({ latlng: layer.getLatLng(), popup: layer.getPopup().getContent(), type: 'needs' });
+      });
+      localStorage.setItem('repairMapMarkers', JSON.stringify(allMarkers));
+    }
+
+    // Load markers from LocalStorage
+    function loadFromLocalStorage() {
+      const saved = localStorage.getItem('repairMapMarkers');
+      if (saved) {
+        JSON.parse(saved).forEach(item => {
+          const marker = L.marker(item.latlng).bindPopup(item.popup);
+          if (item.type === 'repair') {
+            repairLayer.addLayer(marker);
+          } else {
+            needsRepairLayer.addLayer(marker);
+          }
+        });
+      }
+    }
+
+    // Call on map load
+    loadFromLocalStorage();
 
     // Load NYC borough boundaries from a GeoJSON file
     fetch('boroughs.geojson')
@@ -128,5 +159,3 @@
   </script>
 </body>
 </html>
-
-
