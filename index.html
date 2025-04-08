@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet-geosearch@3.0.0/dist/geosearch.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-geosearch@3.0.0/dist/geosearch.css" />
   <style>
     body {
       margin: 0;
@@ -106,7 +106,7 @@
 
   <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
-  <script src="https://unpkg.com/leaflet-geosearch@3.0.0/dist/bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/leaflet-geosearch@3.0.0/dist/bundle.min.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
   <script>
@@ -141,8 +141,8 @@
     });
     map.addControl(searchControl);
 
-    const repairLayer = L.layerGroup().addTo(map);
-    const needsRepairLayer = L.layerGroup().addTo(map);
+    const repairLayer = L.layerGroup();
+    const needsRepairLayer = L.layerGroup();
 
     const layers = {
       "🛠 Where People Go for Repairs": repairLayer,
@@ -150,6 +150,9 @@
     };
 
     L.control.layers(null, layers, { position: 'topright', collapsed: false }).addTo(map);
+
+    repairLayer.addTo(map);
+    needsRepairLayer.addTo(map);
 
     const customIcon = new L.DivIcon({
       className: 'custom-icon',
