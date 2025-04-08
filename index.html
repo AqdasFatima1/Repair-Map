@@ -1,76 +1,44 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Crowdsourced Repair Map</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
   <style>
-    /* Your previous CSS */
+    #map { height: 100vh; }
+    .custom-popup input, .custom-popup textarea {
+      width: 100%;
+      margin-top: 5px;
+    }
+    .leaflet-popup-content-wrapper {
+      max-width: 300px;
+    }
   </style>
 </head>
 <body>
-  <header>
-    <h1>Crowdsourced Repair Map</h1>
-    <p>This map collects data on informal repair practices and infrastructure in need of care in NYC.<br>
-      Click anywhere on the map to share a marker. Add a title, description, optional image, and select the layer it belongs to.<br>
-      Use the toggle to view either where repair happens or where it's needed.
-    </p>
-  </header>
-
   <div id="map"></div>
 
   <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
-  <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
   <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyAiKzc8OGzf3X-AfQbHk6bI6SoKtPvcq2E",
-      authDomain: "repair-map-50701.firebaseapp.com",
-      projectId: "repair-map-50701",
-      storageBucket: "repair-map-50701.appspot.com",
-      messagingSenderId: "42233664095",
-      appId: "1:42233664095:web:da8ddb442169ed06f8c1ea",
-      measurementId: "G-11VNZY8QLX"
-    };
+    const map = L.map('map').setView([40.7128, -74.0060], 13); // NYC center
 
-    // Initialize Firebase and Firestore
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-
-    // Create the map
-    const map = L.map('map').setView([40.7128, -74.0060], 11);
-
-    // Add tile layer
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; OpenStreetMap contributors & CartoDB',
-      maxZoom: 19
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
-
-    // Remove GeoSearch and search bar code
-    // You can directly proceed with adding markers and layers without the search bar
 
     const repairLayer = L.layerGroup().addTo(map);
     const needsRepairLayer = L.layerGroup().addTo(map);
 
     const layers = {
-      "🛠 Where People Go for Repairs": repairLayer,
-      "🚧 Infrastructure Needing Repair": needsRepairLayer
+      "Where People Go for Repairs": repairLayer,
+      "Infrastructure Needing Repair": needsRepairLayer
     };
 
-    L.control.layers(null, layers, { position: 'topright', collapsed: false }).addTo(map);
-
-    const customIcon = new L.DivIcon({
-      className: 'custom-icon',
-      iconSize: [20, 20]
-    });
-
-    let tempLatLng = null;
+    L.control.layers(null, layers).addTo(map);
 
     map.on('click', function(e) {
-      tempLatLng = e.latlng;
       const popupContent = `
         <div class="custom-popup">
           <label>Title:<br><input type="text" id="title"></label><br>
@@ -83,7 +51,7 @@
               <option value="needs">Infrastructure Needing Repair</option>
             </select>
           </label><br>
-          <button onclick="saveMarker()">Save</button>
+          <button onclick="saveMarker(${e.latlng.lat}, ${e.latlng.lng})">Save</button>
         </div>
       `;
       L.popup()
@@ -92,56 +60,24 @@
         .openOn(map);
     });
 
-    function saveMarker() {
+    function saveMarker(lat, lng) {
       const title = document.getElementById('title').value;
       const desc = document.getElementById('desc').value;
       const img = document.getElementById('img').value;
       const layerType = document.getElementById('layer').value;
 
-      const data = {
-        lat: tempLatLng.lat,
-        lng: tempLatLng.lng,
-        title,
-        desc,
-        img,
-        type: layerType
-      };
+      const fullDesc = `<strong>${title}</strong><br>${desc}<br>${img ? '<img src="' + img + '" width="200">' : ''}`;
 
-      db.collection("markers").add(data).then(() => {
-        addMarkerToMap(data);
-        map.closePopup();
-      });
-    }
+      const marker = L.marker([lat, lng]).bindPopup(fullDesc);
 
-    function addMarkerToMap(data) {
-      const content = `<strong>${data.title}</strong><br>${data.desc}<br>${data.img ? '<img src="' + data.img + '" width="200">' : ''}`;
-      const marker = L.marker([data.lat, data.lng], { icon: customIcon }).bindPopup(content);
-      if (data.type === 'repair') {
+      if (layerType === 'repair') {
         repairLayer.addLayer(marker);
       } else {
         needsRepairLayer.addLayer(marker);
       }
+
+      map.closePopup();
     }
-
-    db.collection("markers").get().then(querySnapshot => {
-      querySnapshot.forEach(doc => {
-        addMarkerToMap(doc.data());
-      });
-    });
-
-    map.whenReady(() => {
-      fetch('boroughs.geojson')
-        .then(res => res.json())
-        .then(data => {
-          L.geoJSON(data, {
-            style: {
-              color: '#6fa76b',
-              weight: 2,
-              fillOpacity: 0.07
-            }
-          }).addTo(map);
-        }).catch(err => console.error("GeoJSON load error:", err));
-    });
   </script>
 </body>
 </html>
