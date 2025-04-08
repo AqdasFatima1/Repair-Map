@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Crowdsourced Repair Map</title>
-  <meta charset="utf-8" />
+  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Crowdsourced Repair Map</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet-geosearch@3.0.0/dist/geosearch.css" />
@@ -120,17 +120,20 @@
       measurementId: "G-11VNZY8QLX"
     };
 
+    // Initialize Firebase and Firestore
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
+    // Create the map
     const map = L.map('map').setView([40.7128, -74.0060], 11);
 
+    // Add tile layer
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
       attribution: '&copy; OpenStreetMap contributors & CartoDB',
       maxZoom: 19
     }).addTo(map);
 
-    // Initialize the GeoSearch provider and control
+    // Initialize GeoSearch provider and control
     const provider = new window.GeoSearch.OpenStreetMapProvider();
     const searchControl = new window.GeoSearch.GeoSearchControl({
       provider: provider,
@@ -142,9 +145,11 @@
     });
     map.addControl(searchControl);
 
+    // Create layers
     const repairLayer = L.layerGroup().addTo(map);
     const needsRepairLayer = L.layerGroup().addTo(map);
 
+    // Control for layers
     const layers = {
       "🛠 Where People Go for Repairs": repairLayer,
       "🚧 Infrastructure Needing Repair": needsRepairLayer
@@ -152,6 +157,7 @@
 
     L.control.layers(null, layers, { position: 'topright', collapsed: false }).addTo(map);
 
+    // Create custom marker icon
     const customIcon = new L.DivIcon({
       className: 'custom-icon',
       iconSize: [20, 20]
@@ -159,6 +165,7 @@
 
     let tempLatLng = null;
 
+    // Handle map click event
     map.on('click', function(e) {
       tempLatLng = e.latlng;
       const popupContent = `
@@ -182,6 +189,7 @@
         .openOn(map);
     });
 
+    // Save marker function
     function saveMarker() {
       const title = document.getElementById('title').value;
       const desc = document.getElementById('desc').value;
@@ -197,12 +205,16 @@
         type: layerType
       };
 
+      // Add data to Firestore
       db.collection("markers").add(data).then(() => {
         addMarkerToMap(data);
         map.closePopup();
+      }).catch(error => {
+        console.error("Error saving marker: ", error);
       });
     }
 
+    // Add marker to map
     function addMarkerToMap(data) {
       const content = `<strong>${data.title}</strong><br>${data.desc}<br>${data.img ? '<img src="' + data.img + '" width="200">' : ''}`;
       const marker = L.marker([data.lat, data.lng], { icon: customIcon }).bindPopup(content);
@@ -213,12 +225,14 @@
       }
     }
 
+    // Fetch all markers from Firestore
     db.collection("markers").get().then(querySnapshot => {
       querySnapshot.forEach(doc => {
         addMarkerToMap(doc.data());
       });
     });
 
+    // Fetch and load GeoJSON data
     map.whenReady(() => {
       fetch('boroughs.geojson')
         .then(res => res.json())
