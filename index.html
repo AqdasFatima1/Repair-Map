@@ -9,31 +9,31 @@
     body {
       margin: 0;
       font-family: 'Georgia', serif;
-      background-color: #edf4ee;
-      color: #2e4438;
+      background-color: #f1f8f2;
+      color: #3b4c42;
     }
     header {
-      background: #d9e8dc;
+      background: #e3f2e8;
       padding: 2rem;
       text-align: center;
-      border-bottom: 1px solid #bdd1c4;
+      border-bottom: 1px solid #bfd4c7;
     }
     header h1 {
       margin: 0;
       font-size: 2.5rem;
-      color: #325f46;
+      color: #3f6954;
       font-weight: 400;
     }
     header p {
       margin: 1.2rem auto 0;
-      color: #4a6452;
+      color: #4c6859;
       max-width: 720px;
       line-height: 1.6;
       font-size: 1.05rem;
     }
     #map {
       height: calc(100vh - 200px);
-      filter: saturate(0.8) brightness(1.02);
+      filter: saturate(1) brightness(1.05);
     }
     .custom-popup input,
     .custom-popup textarea,
@@ -42,29 +42,29 @@
       padding: 6px;
       margin-top: 5px;
       font-family: 'Georgia', serif;
-      border: 1px solid #aac8b0;
-      border-radius: 4px;
-      background-color: #f5faf6;
+      border: 1px solid #a9c9b4;
+      border-radius: 6px;
+      background-color: #f7fbf8;
     }
     .custom-popup button {
       margin-top: 10px;
-      background-color: #92bc9c;
+      background-color: #7db89e;
       color: white;
       padding: 6px 12px;
       border: none;
-      border-radius: 4px;
+      border-radius: 6px;
       cursor: pointer;
       font-family: 'Georgia', serif;
     }
     .leaflet-popup-content-wrapper {
       max-width: 300px;
       font-family: 'Georgia', serif;
-      background-color: #f6fdf8;
-      border: 1px solid #cde6d0;
+      background-color: #f0faf2;
+      border: 1px solid #c5e4d0;
     }
     .leaflet-control-layers-expanded {
-      background-color: #f0fff4;
-      border: 1px solid #b2dfdb;
+      background-color: #eaf7ee;
+      border: 1px solid #b4d8c3;
       padding: 1rem;
       font-size: 1rem;
       font-family: 'Georgia', serif;
@@ -76,13 +76,20 @@
       margin-left: 6px;
       font-size: 1.05rem;
     }
+    .custom-icon {
+      background-color: #ffcb99;
+      border: 2px solid #e89f71;
+      border-radius: 50%;
+      width: 22px;
+      height: 22px;
+    }
   </style>
 </head>
 <body>
   <header>
     <h1>Crowdsourced Repair Map</h1>
     <p>
-      This poetic map collects data on informal repair practices and infrastructure in need of care in NYC.<br>
+      This map collects data on informal repair practices and infrastructure in need of care in NYC.<br>
       Click anywhere on the map to share a marker. Add a title, description, optional image, and select the layer it belongs to.<br>
       Use the toggle to view either where repair happens or where it's needed.
     </p>
@@ -108,6 +115,11 @@
     };
 
     L.control.layers(null, layers, { position: 'topright', collapsed: false }).addTo(map);
+
+    const customIcon = new L.DivIcon({
+      className: 'custom-icon',
+      iconSize: [22, 22]
+    });
 
     let tempLatLng = null;
 
@@ -142,7 +154,7 @@
 
       const fullDesc = `<strong>${title}</strong><br>${desc}<br>${img ? '<img src="' + img + '" width="200">' : ''}`;
 
-      const marker = L.marker([tempLatLng.lat, tempLatLng.lng]).bindPopup(fullDesc);
+      const marker = L.marker([tempLatLng.lat, tempLatLng.lng], { icon: customIcon }).bindPopup(fullDesc);
 
       if (layerType === 'repair') {
         repairLayer.addLayer(marker);
@@ -169,7 +181,7 @@
       const saved = localStorage.getItem('repairMapMarkers');
       if (saved) {
         JSON.parse(saved).forEach(item => {
-          const marker = L.marker(item.latlng).bindPopup(item.popup);
+          const marker = L.marker(item.latlng, { icon: customIcon }).bindPopup(item.popup);
           if (item.type === 'repair') {
             repairLayer.addLayer(marker);
           } else {
@@ -181,14 +193,14 @@
 
     loadFromLocalStorage();
 
-    fetch('boroughs.geojson')
+    fetch('https://aqdasfatima.github.io/repair-map/boroughs.geojson')
       .then(res => res.json())
       .then(data => {
         L.geoJSON(data, {
           style: {
-            color: '#6fa76b',
+            color: '#97bfa8',
             weight: 2,
-            fillOpacity: 0.07
+            fillOpacity: 0.06
           }
         }).addTo(map);
       });
