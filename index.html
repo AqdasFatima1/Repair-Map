@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Crowdsourced Repair Map</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+  <style>
+    #map { height: 100vh; }
+    .custom-popup input, .custom-popup textarea {
+      width: 100%;
+      margin-top: 5px;
+    }
+    .leaflet-popup-content-wrapper {
+      max-width: 300px;
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+  <script>
+    const map = L.map('map').setView([40.7128, -74.0060], 13); // NYC center
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    const repairLayer = L.layerGroup().addTo(map);
+    const needsRepairLayer = L.layerGroup().addTo(map);
+
+    const layers = {
+      "Where People Go for Repairs": repairLayer,
+      "Infrastructure Needing Repair": needsRepairLayer
+    };
+
+    L.control.layers(null, layers).addTo(map);
+
+    map.on('click', function(e) {
+      const popupContent = `
+        <div class="custom-popup">
+          <label>Title:<br><input type="text" id="title"></label><br>
+          <label>Description:<br><textarea id="desc"></textarea></label><br>
+          <label>Image URL:<br><input type="text" id="img"></label><br>
+          <label>
+            Layer:<br>
+            <select id="layer">
+              <option value="repair">Where People Go for Repairs</option>
+              <option value="needs">Infrastructure Needing Repair</option>
+            </select>
+          </label><br>
+          <button onclick="saveMarker(${e.latlng.lat}, ${e.latlng.lng})">Save</button>
+        </div>
+      `;
+      L.popup()
+        .setLatLng(e.latlng)
+        .setContent(popupContent)
+        .openOn(map);
+    });
+
+    function saveMarker(lat, lng) {
+      const title = document.getElementById('title').value;
+      const desc = document.getElementById('desc').value;
+      const img = document.getElementById('img').value;
+      const layerType = document.getElementById('layer').value;
+
+      const fullDesc = `<strong>${title}</strong><br>${desc}<br>${img ? '<img src="' + img + '" width="200">' : ''}`;
+
+      const marker = L.marker([lat, lng]).bindPopup(fullDesc);
+
+      if (layerType === 'repair') {
+        repairLayer.addLayer(marker);
+      } else {
+        needsRepairLayer.addLayer(marker);
+      }
+
+      map.closePopup();
+    }
+  </script>
+</body>
+</html>
