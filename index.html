@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-geosearch@3.0.0/dist/geosearch.css" />
   <style>
     body {
       margin: 0;
@@ -100,6 +101,7 @@
 
   <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+  <script src="https://unpkg.com/leaflet-geosearch@3.0.0/dist/bundle.min.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
   <script>
@@ -123,7 +125,16 @@
       maxZoom: 19
     }).addTo(map);
 
-    L.Control.geocoder().addTo(map);
+    const provider = new window.GeoSearch.OpenStreetMapProvider();
+    const searchControl = new window.GeoSearch.GeoSearchControl({
+      provider: provider,
+      style: 'button',
+      showMarker: false,
+      retainZoomLevel: false,
+      autoClose: true,
+      searchLabel: 'Search for a place'
+    });
+    map.addControl(searchControl);
 
     const repairLayer = L.layerGroup().addTo(map);
     const needsRepairLayer = L.layerGroup().addTo(map);
