@@ -2,164 +2,245 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Visibilizing Repair Map</title>
-  <link
-    href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;600&display=swap"
-    rel="stylesheet"
-  />
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-  />
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css"
-  />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Repair Map NYC</title>
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <!-- GeoSearch CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-geosearch@3.7.0/dist/geosearch.css" />
+
   <style>
-    body {
+    body, html {
       margin: 0;
-      font-family: 'Manrope', sans-serif;
-      background-color: #f6f5f1;
+      padding: 0;
+      height: 100%;
+      font-family: 'Arial', sans-serif; /* Changed to a clean, modern font */
     }
 
     #map {
-      width: 100vw;
       height: 100vh;
-      border-radius: 16px;
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-    }
-
-    .leaflet-popup-content-wrapper {
-      max-width: 400px;
-      font-size: 15px;
-      border-radius: 16px;
-      font-family: 'Manrope', sans-serif;
-      padding: 8px;
-    }
-
-    .leaflet-popup-content {
-      margin: 8px;
-    }
-
-    .leaflet-control-geocoder,
-    .leaflet-control-geocoder-form input {
-      border-radius: 10px;
-      background-color: #ffffff;
-      font-family: 'Manrope', sans-serif;
-      font-size: 14px;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+      width: 100%;
+      border-radius: 15px; /* More rounded feel for the map */
     }
 
     .leaflet-control-layers {
+      background: white;
+      padding: 12px;
+      font-size: 16px;
+      border-radius: 10px; /* Rounded layer control */
+    }
+
+    .leaflet-control-layers label {
       font-size: 14px;
-      border-radius: 12px;
-      background-color: #ebded2 !important;
-      font-family: 'Manrope', sans-serif;
-      padding: 6px;
+    }
+
+    .custom-popup input, .custom-popup textarea, .custom-popup select {
+      width: 100%;
+      margin-top: 8px;
+      margin-bottom: 12px;
+      border-radius: 6px; /* Rounded form fields */
+      padding: 8px;
+      font-size: 14px;
+    }
+
+    .custom-popup button {
+      padding: 8px 14px;
+      cursor: pointer;
+      border-radius: 6px; /* Rounded button */
+      background-color: #4B8D7D; /* Subtle color */
+      color: white;
+      border: none;
+    }
+
+    .custom-popup button:hover {
+      background-color: #3e755e;
+    }
+
+    .custom-icon {
+      background-color: #4B8D7D; /* Consistent with map's color palette */
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      display: block;
+    }
+
+    .leaflet-bar a {
+      border-radius: 50%; /* Rounded control icons */
+    }
+
+    .leaflet-geosearch-input {
+      border-radius: 8px; /* Rounded search bar */
+      font-size: 16px;
+    }
+
+    .leaflet-geosearch-bar {
+      border-radius: 10px; /* Rounded search bar container */
+    }
+
+    /* Style for the map tiles */
+    .leaflet-tile {
+      filter: saturate(80%); /* Muted, professional color palette */
     }
   </style>
 </head>
 <body>
   <div id="map"></div>
 
-  <!-- Leaflet and plugins -->
-  <script
-    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-  ></script>
-  <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+  <!-- Firebase & Firestore -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+
+  <!-- Leaflet & GeoSearch -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-geosearch@3.7.0/dist/bundle.min.js"></script>
 
   <script>
-    const map = L.map('map').setView([40.7128, -74.006], 13);
+    const firebaseConfig = {
+      apiKey: "AIzaSyAiKzc8OGzf3X-AfQbHk6bI6SoKtPvcq2E",
+      authDomain: "repair-map-50701.firebaseapp.com",
+      projectId: "repair-map-50701",
+      storageBucket: "repair-map-50701.appspot.com",
+      messagingSenderId: "42233664095",
+      appId: "1:42233664095:web:da8ddb442169ed06f8c1ea",
+      measurementId: "G-11VNZY8QLX"
+    };
 
-    const tileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-      attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-      subdomains: 'abcd',
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    const map = L.map('map').setView([40.7128, -74.0060], 11);
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; OpenStreetMap contributors & CartoDB',
       maxZoom: 19
     }).addTo(map);
 
-    const geocoderControl = L.Control.geocoder({
-      defaultMarkGeocode: false,
-      placeholder: 'Search here...'
-    })
-      .on('markgeocode', function (e) {
-        const bbox = e.geocode.bbox;
-        const poly = L.polygon([
-          bbox.getSouthEast(),
-          bbox.getNorthEast(),
-          bbox.getNorthWest(),
-          bbox.getSouthWest()
-        ]).addTo(map);
-        map.fitBounds(poly.getBounds());
-      })
-      .addTo(map);
-
-    const repairIcon = L.icon({
-      iconUrl: 'https://cdn-icons-png.flaticon.com/512/2933/2933825.png',
-      iconSize: [30, 30],
-      iconAnchor: [15, 30],
-      popupAnchor: [0, -30]
-    });
-
-    const brokenIcon = L.icon({
-      iconUrl: 'https://cdn-icons-png.flaticon.com/512/2232/2232688.png',
-      iconSize: [30, 30],
-      iconAnchor: [15, 30],
-      popupAnchor: [0, -30]
+    // GeoSearch Control
+    window.addEventListener('load', function () {
+      if (typeof GeoSearch !== 'undefined' && GeoSearch.OpenStreetMapProvider) {
+        const provider = new GeoSearch.OpenStreetMapProvider();
+        const searchControl = new GeoSearch.GeoSearchControl({
+          provider: provider,
+          style: 'bar',
+          showMarker: true,
+          retainZoomLevel: false,
+          autoClose: true,
+          searchLabel: 'Search for a place'
+        });
+        map.addControl(searchControl);
+      } else {
+        console.error("GeoSearch or OpenStreetMapProvider is not loaded correctly");
+      }
     });
 
     const repairLayer = L.layerGroup().addTo(map);
-    const brokenLayer = L.layerGroup().addTo(map);
+    const needsRepairLayer = L.layerGroup().addTo(map);
 
-    const overlays = {
-      'Repair Locations': repairLayer,
-      'Needs Repair': brokenLayer
+    const layers = {
+      "Where People Go for Repairs": repairLayer,
+      "Infrastructure Needing Repair": needsRepairLayer
     };
-    L.control.layers(null, overlays).addTo(map);
 
-    const allMarkers = [];
+    L.control.layers(null, layers, { position: 'topright', collapsed: false }).addTo(map);
 
-    function onMapClick(e) {
-      const type = prompt(
-        'Type "repair" to mark a repair location, or "broken" to mark something needing repair:'
-      );
+    const customIcon = new L.DivIcon({
+      className: 'custom-icon',
+      iconSize: [20, 20]
+    });
 
-      if (type === 'repair' || type === 'broken') {
-        const description = prompt('Enter a description for this location:');
-        const imageUrl = prompt('Optional: Enter an image URL to include:');
+    map.on('click', function (e) {
+      const markerId = `marker-${Date.now()}`;
+      const popupContent = document.createElement('div');
+      popupContent.className = 'custom-popup';
+      popupContent.innerHTML = `
+        <label>Title:<br><input type="text" id="${markerId}-title"></label><br>
+        <label>Description:<br><textarea id="${markerId}-desc"></textarea></label><br>
+        <label>Image URL:<br><input type="text" id="${markerId}-img"></label><br>
+        <label>
+          Layer:<br>
+          <select id="${markerId}-layer">
+            <option value="repair">Where People Go for Repairs</option>
+            <option value="needs">Infrastructure Needing Repair</option>
+          </select>
+        </label><br>
+        <button id="${markerId}-save">Save</button>
+      `;
 
-        const popupContent = `<strong>${type === 'repair' ? 'Repair Site' : 'Needs Repair'}</strong><br>${description}<br>` +
-          (imageUrl ? `<img src="${imageUrl}" alt="User submitted" style="width: 100%; margin-top: 8px; border-radius: 10px;" />` : '');
+      const popup = L.popup()
+        .setLatLng(e.latlng)
+        .setContent(popupContent)
+        .openOn(map);
 
-        const marker = L.marker(e.latlng, {
-          icon: type === 'repair' ? repairIcon : brokenIcon
-        }).bindPopup(popupContent);
+      document.getElementById(`${markerId}-save`).addEventListener('click', () => {
+        saveMarker(e.latlng, markerId);
+      });
+    });
 
-        const geojsonFeature = {
-          type: 'Feature',
-          geometry: {
-            type: 'Point',
-            coordinates: [e.latlng.lng, e.latlng.lat]
-          },
-          properties: {
-            type,
-            description,
-            imageUrl
-          }
-        };
-
-        allMarkers.push(geojsonFeature);
-
-        if (type === 'repair') {
-          marker.addTo(repairLayer);
-        } else {
-          marker.addTo(brokenLayer);
-        }
+    function sanitizeURL(url) {
+      try {
+        const parsed = new URL(url);
+        return ['http:', 'https:'].includes(parsed.protocol) ? parsed.href : '';
+      } catch {
+        return '';
       }
     }
 
-    map.on('click', onMapClick);
+    function saveMarker(latlng, markerId) {
+      const title = document.getElementById(`${markerId}-title`).value.trim();
+      const desc = document.getElementById(`${markerId}-desc`).value.trim();
+      const img = document.getElementById(`${markerId}-img`).value.trim();
+      const layerType = document.getElementById(`${markerId}-layer`).value;
+
+      if (!title) return alert("Title is required");
+
+      const data = {
+        lat: latlng.lat,
+        lng: latlng.lng,
+        title,
+        desc,
+        img,
+        type: layerType
+      };
+
+      db.collection("markers").add(data).then(() => {
+        addMarkerToMap(data);
+        map.closePopup();
+      });
+    }
+
+    function addMarkerToMap(data) {
+      const safeImg = sanitizeURL(data.img);
+      const content = `<strong>${data.title}</strong><br>${data.desc}${safeImg ? `<br><img src="${safeImg}" width="200">` : ''}`;
+      const marker = L.marker([data.lat, data.lng], { icon: customIcon }).bindPopup(content);
+
+      if (data.type === 'repair') {
+        repairLayer.addLayer(marker);
+      } else {
+        needsRepairLayer.addLayer(marker);
+      }
+    }
+
+    db.collection("markers").get().then(querySnapshot => {
+      querySnapshot.forEach(doc => {
+        addMarkerToMap(doc.data());
+      });
+    });
+
+    // Load borough boundaries GeoJSON
+    map.whenReady(() => {
+      fetch('boroughs.geojson')
+        .then(res => res.json())
+        .then(data => {
+          L.geoJSON(data, {
+            style: {
+              color: '#4B8D7D', /* Subtle green for borough boundaries */
+              weight: 2,
+              fillOpacity: 0.1
+            }
+          }).addTo(map);
+        }).catch(err => console.error("GeoJSON load error:", err));
+    });
   </script>
 </body>
 </html>
