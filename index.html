@@ -1,83 +1,165 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Crowdsourced Repair Map</title>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Visibilizing Repair Map</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;600&display=swap"
+    rel="stylesheet"
+  />
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css"
+  />
   <style>
-    #map { height: 100vh; }
-    .custom-popup input, .custom-popup textarea {
-      width: 100%;
-      margin-top: 5px;
+    body {
+      margin: 0;
+      font-family: 'Manrope', sans-serif;
+      background-color: #f6f5f1;
     }
+
+    #map {
+      width: 100vw;
+      height: 100vh;
+      border-radius: 16px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    }
+
     .leaflet-popup-content-wrapper {
-      max-width: 300px;
+      max-width: 400px;
+      font-size: 15px;
+      border-radius: 16px;
+      font-family: 'Manrope', sans-serif;
+      padding: 8px;
+    }
+
+    .leaflet-popup-content {
+      margin: 8px;
+    }
+
+    .leaflet-control-geocoder,
+    .leaflet-control-geocoder-form input {
+      border-radius: 10px;
+      background-color: #ffffff;
+      font-family: 'Manrope', sans-serif;
+      font-size: 14px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    }
+
+    .leaflet-control-layers {
+      font-size: 14px;
+      border-radius: 12px;
+      background-color: #ebded2 !important;
+      font-family: 'Manrope', sans-serif;
+      padding: 6px;
     }
   </style>
 </head>
 <body>
   <div id="map"></div>
 
-  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
-  <script>
-    const map = L.map('map').setView([40.7128, -74.0060], 13); // NYC center
+  <!-- Leaflet and plugins -->
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+  ></script>
+  <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '&copy; OpenStreetMap contributors'
+  <script>
+    const map = L.map('map').setView([40.7128, -74.006], 13);
+
+    const tileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+      subdomains: 'abcd',
+      maxZoom: 19
     }).addTo(map);
 
-    const repairLayer = L.layerGroup().addTo(map);
-    const needsRepairLayer = L.layerGroup().addTo(map);
+    const geocoderControl = L.Control.geocoder({
+      defaultMarkGeocode: false,
+      placeholder: 'Search here...'
+    })
+      .on('markgeocode', function (e) {
+        const bbox = e.geocode.bbox;
+        const poly = L.polygon([
+          bbox.getSouthEast(),
+          bbox.getNorthEast(),
+          bbox.getNorthWest(),
+          bbox.getSouthWest()
+        ]).addTo(map);
+        map.fitBounds(poly.getBounds());
+      })
+      .addTo(map);
 
-    const layers = {
-      "Where People Go for Repairs": repairLayer,
-      "Infrastructure Needing Repair": needsRepairLayer
-    };
-
-    L.control.layers(null, layers).addTo(map);
-
-    map.on('click', function(e) {
-      const popupContent = `
-        <div class="custom-popup">
-          <label>Title:<br><input type="text" id="title"></label><br>
-          <label>Description:<br><textarea id="desc"></textarea></label><br>
-          <label>Image URL:<br><input type="text" id="img"></label><br>
-          <label>
-            Layer:<br>
-            <select id="layer">
-              <option value="repair">Where People Go for Repairs</option>
-              <option value="needs">Infrastructure Needing Repair</option>
-            </select>
-          </label><br>
-          <button onclick="saveMarker(${e.latlng.lat}, ${e.latlng.lng})">Save</button>
-        </div>
-      `;
-      L.popup()
-        .setLatLng(e.latlng)
-        .setContent(popupContent)
-        .openOn(map);
+    const repairIcon = L.icon({
+      iconUrl: 'https://cdn-icons-png.flaticon.com/512/2933/2933825.png',
+      iconSize: [30, 30],
+      iconAnchor: [15, 30],
+      popupAnchor: [0, -30]
     });
 
-    function saveMarker(lat, lng) {
-      const title = document.getElementById('title').value;
-      const desc = document.getElementById('desc').value;
-      const img = document.getElementById('img').value;
-      const layerType = document.getElementById('layer').value;
+    const brokenIcon = L.icon({
+      iconUrl: 'https://cdn-icons-png.flaticon.com/512/2232/2232688.png',
+      iconSize: [30, 30],
+      iconAnchor: [15, 30],
+      popupAnchor: [0, -30]
+    });
 
-      const fullDesc = `<strong>${title}</strong><br>${desc}<br>${img ? '<img src="' + img + '" width="200">' : ''}`;
+    const repairLayer = L.layerGroup().addTo(map);
+    const brokenLayer = L.layerGroup().addTo(map);
 
-      const marker = L.marker([lat, lng]).bindPopup(fullDesc);
+    const overlays = {
+      'Repair Locations': repairLayer,
+      'Needs Repair': brokenLayer
+    };
+    L.control.layers(null, overlays).addTo(map);
 
-      if (layerType === 'repair') {
-        repairLayer.addLayer(marker);
-      } else {
-        needsRepairLayer.addLayer(marker);
+    const allMarkers = [];
+
+    function onMapClick(e) {
+      const type = prompt(
+        'Type "repair" to mark a repair location, or "broken" to mark something needing repair:'
+      );
+
+      if (type === 'repair' || type === 'broken') {
+        const description = prompt('Enter a description for this location:');
+        const imageUrl = prompt('Optional: Enter an image URL to include:');
+
+        const popupContent = `<strong>${type === 'repair' ? 'Repair Site' : 'Needs Repair'}</strong><br>${description}<br>` +
+          (imageUrl ? `<img src="${imageUrl}" alt="User submitted" style="width: 100%; margin-top: 8px; border-radius: 10px;" />` : '');
+
+        const marker = L.marker(e.latlng, {
+          icon: type === 'repair' ? repairIcon : brokenIcon
+        }).bindPopup(popupContent);
+
+        const geojsonFeature = {
+          type: 'Feature',
+          geometry: {
+            type: 'Point',
+            coordinates: [e.latlng.lng, e.latlng.lat]
+          },
+          properties: {
+            type,
+            description,
+            imageUrl
+          }
+        };
+
+        allMarkers.push(geojsonFeature);
+
+        if (type === 'repair') {
+          marker.addTo(repairLayer);
+        } else {
+          marker.addTo(brokenLayer);
+        }
       }
-
-      map.closePopup();
     }
+
+    map.on('click', onMapClick);
   </script>
 </body>
 </html>
